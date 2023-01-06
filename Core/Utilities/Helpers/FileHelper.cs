@@ -9,51 +9,115 @@ using System.Threading.Tasks;
 
 namespace Core.Utilities.Helpers
 {
-    public class FileHepler : IFileHelper
+    public static class FileHelper
     {
-        public void Delete(string filePath)  // Buradaki string filePath; "CarImageManager" dan gelen dosyanin kaydedildiği adres ve adı
+        private static string _currentFileDirectory = Environment.CurrentDirectory + "\\wwwroot";
+        private static string _folderName = "\\Images\\";
+
+        public static IResult Add(IFormFile file)
         {
-            if (File.Exists(filePath))  // Gelen adreste dosyanın olup olmadığını kontrol ediyoruz.
+            var fileExist = CheckFileExists(file);
+            if (!fileExist.Success)
             {
-                File.Delete(filePath);  // Eğer dosya var ise siliniyor.
+                return new ErrorResult(fileExist.Message);
+            }
+
+            var type = Path.GetExtension(file.FileName);
+            
+            var typeValid = CheckFileTypeValid(type);
+            if (!typeValid.Success)
+            {
+                return new ErrorResult(typeValid.Message);
+            }
+
+            var randomGuid = Guid.NewGuid().ToString();
+
+            var directory = _currentFileDirectory + _folderName;
+            var fileDirectory = directory + randomGuid + type;
+
+            CheckFileDirectoryExist(directory);
+            CreateImageFile(fileDirectory, file);
+
+            var fileAddressToBeSavedOnDatabase = _folderName + randomGuid + type;
+            return new SuccessResult(fileAddressToBeSavedOnDatabase.Replace("\\", "/"));
+        }
+
+        public static IResult Update(IFormFile file, string imagePath)
+        {
+            var fileExist = CheckFileExists(file);
+            if (!fileExist.Success)
+            {
+                return new ErrorResult(fileExist.Message);
+            }
+
+            var type = Path.GetExtension(file.FileName);
+            var typeValid = CheckFileTypeValid(type);
+            if (!typeValid.Success)
+            {
+                return new ErrorResult(typeValid.Message);
+            }
+            var randomGuid = Guid.NewGuid().ToString();
+
+            var directory = _currentFileDirectory + _folderName;
+            var fileDirectory = directory + randomGuid + type;
+
+            DeleteOldImageFile(imagePath.Replace("/", "\\"));
+            CheckFileDirectoryExist(directory);
+            CreateImageFile(fileDirectory, file);
+
+            // Message of the result returns the ImagePath of added image.
+            var fileAddressToBeSavedOnDatabase = _folderName + randomGuid + type;
+            return new SuccessResult(fileAddressToBeSavedOnDatabase.Replace("\\", "/"));
+        }
+
+        public static IResult Delete(string path)
+        {
+            DeleteOldImageFile(path.Replace("/", "\\"));
+            return new SuccessResult();
+        }
+
+        private static IResult CheckFileTypeValid(string type)
+        {
+            if (type == ".jpeg" || type == ".png" || type == ".jpg")
+            {
+                return new SuccessResult();
+            }
+            return new ErrorResult("File Type Is Wrong! It Has To Be ('.jpeg', '.png' or '.jpg')");
+        }
+
+        private static IResult CheckFileExists(IFormFile file)
+        {
+            if (file != null && file.Length > 0)
+            {
+                return new SuccessResult();
+            }
+            return new ErrorResult("File Does Not Exist!");
+        }
+
+        private static void DeleteOldImageFile(string directory)
+        {
+            var fullDirectory = Environment.CurrentDirectory + "\\wwwroot" + directory;
+            if (File.Exists(fullDirectory))
+            {
+                File.Delete(fullDirectory);
             }
         }
 
-        public string Update(IFormFile file, string filePath, string root)
+        private static void CheckFileDirectoryExist(string directory)
         {
-            if (File.Exists(filePath))  // Gelen adreste dosyanın olup olmadığını kontrol ediyoruz.
+            if (!Directory.Exists(directory))
             {
-                File.Delete(filePath);  // Eğer dosya var ise siliniyor.
+                Directory.CreateDirectory(directory);
             }
-            return Upload(file, root);  // Eski dosya silindikten sonra yerine geçecek yeni dosya için Upload metodu ile yeni dosyayı ekliyoruz.
         }
 
-        public string Upload(IFormFile file, string root)
+        private static void CreateImageFile(string directory, IFormFile file)
         {
-            if (file.Length > 0)  // Dosyanın gönderildiği dosya uzunluğundan kontrol ediliyor.
+            using (FileStream fileStream = File.Create(directory))
             {
-                if (!Directory.Exists(root))
-                {
-                    // Directory; System.IO'nun bir class'ıdır. Buradaki işlem tam olarak şu. Bu Upload metodumun parametresi olan string root CarManager'dan gelmekte
-                    // CarImageManager içerisine girdiğinizde buraya parametre olarak *PathConstants.ImagesPath* böyle bir şey gönderilidğini görürsünüz.
-                    // PathConstants clası içerisine girdiğinizde string bir ifadeyle bir dizin adresi var.
-                    // O adres bizim yükleyeceğimiz dosyaların kayıt edileceği adres burada *Check if a directory Exists*
-                    // ifadesi şunu belirtiyor dosyanın kaydedileceği adres dizini var mı? varsa if yapısının kod bloğundan ayrılır
-                    // eğer yoksa içinde ki kodda dosyaların kayıt edilecek dizini oluşturur.
-                    Directory.CreateDirectory(root);
-                }
-                string extension = Path.GetExtension(file.FileName);  // Seçmiş olduğumuz dosyanın uzantısını elde ediyoruz.
-                string guid = Guid.NewGuid().ToString();  // Core.Utilities.Helpers.GuidHelper klasöründeki GuidManager class'ında oluşturduğumuz eşsiz ismi alıyoruz.
-                string filePath = guid + extension;  // İsim ile uzantıyı birleştiriyoruz.
-
-                using (FileStream fileStream = File.Create(root + filePath))  // FileStream class'ının bir örneği oluşturuldu, sonrasında ise "root + filePath" yolunda bir dosya oluşturur.
-                {
-                    file.CopyTo(fileStream);  // Yukarıdan gelen IFormFile türündeki file dosyasını nereye kopyalayacağını belirttik.
-                    fileStream.Flush();  // Arabellekte silme.
-                    return filePath;  // Sql servere dosya eklenirken adı ile eklenmesi için dosyamızın tam adını geri döndürüyoruz.
-                }
+                file.CopyTo(fileStream);
+                fileStream.Flush();
             }
-            return null;
         }
     }
 }

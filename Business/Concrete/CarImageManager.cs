@@ -16,47 +16,66 @@ namespace Business.Concrete
     public class CarImageManager : ICarImageService
     {
         ICarImageDal _carImageDal;
-        IFileHelper _fileHelper;
 
         private string ImagesPath = "wwwroot\\Images\\";
 
-        public CarImageManager(ICarImageDal carImageDal, IFileHelper fileHelper)
+        public CarImageManager(ICarImageDal carImageDal)
         {
             _carImageDal = carImageDal;
-            _fileHelper = fileHelper;
         }
 
         public IResult Add(IFormFile file, CarImage carImage)
         {
             IResult result = BusinessRules.Run(CheckIfCarImageLimit(carImage.CarId));
-            if (result != null)
+            if (!result.Success)
             {
                 return result;
             }
-            carImage.ImagePath = _fileHelper.Upload(file, ImagesPath);
-            carImage.Date = DateTime.Now;
+
+            // Adding Image
+            var imageResult = FileHelper.Add(file);
+            carImage.ImagePath = imageResult.Message;
+            if (!imageResult.Success)
+            {
+                return new ErrorResult(imageResult.Message);
+            }
             _carImageDal.Add(carImage);
-            return new SuccessResult("Resim başarıyla yüklendi");
+            return new SuccessResult();
         }
 
         public IResult Delete(CarImage carImage)
         {
-            _fileHelper.Delete(ImagesPath + carImage.ImagePath);
+            var carToBeDeleted = _carImageDal.Get(c => c.ImageId == carImage.ImageId);
+            if (carToBeDeleted == null)
+            {
+                return new ErrorResult();
+            }
+            FileHelper.Delete(carToBeDeleted.ImagePath);
             _carImageDal.Delete(carImage);
             return new SuccessResult();
         }
 
         public IResult Update(IFormFile file, CarImage carImage)
         {
-            carImage.ImagePath = _fileHelper.Update(file, ImagesPath + carImage.ImagePath, ImagesPath);
+            var carToBeUpdated = _carImageDal.Get(c => c.ImageId == carImage.ImageId);
+            if (carToBeUpdated == null)
+            {
+                return new ErrorResult();
+            }
+            var imageResult = FileHelper.Update(file, carToBeUpdated.ImagePath);
+            carImage.ImagePath = imageResult.Message;
+            if (!imageResult.Success)
+            {
+                return new ErrorResult(imageResult.Message);
+            }
             _carImageDal.Update(carImage);
             return new SuccessResult();
         }
 
         public IDataResult<List<CarImage>> GetByCarId(byte carId)
         {
-            var result = BusinessRules.Run(CheckCarImage(carId));
-            if (result != null)
+            var result = _carImageDal.GetAll(c => c.CarId == carId).Count;
+            if (result == 0)
             {
                 return new ErrorDataResult<List<CarImage>>(GetDefaultImage(carId).Data);
             }
@@ -72,6 +91,7 @@ namespace Business.Concrete
         {
             return new SuccessDataResult<List<CarImage>>(_carImageDal.GetAll());
         }
+
         private IResult CheckIfCarImageLimit(int carId)
         {
             var result = _carImageDal.GetAll(c => c.CarId == carId).Count;
@@ -81,20 +101,14 @@ namespace Business.Concrete
             }
             return new SuccessResult();
         }
+
         private IDataResult<List<CarImage>> GetDefaultImage(byte carId)
         {
             List<CarImage> carImage = new List<CarImage>();
-            carImage.Add(new CarImage { CarId = carId, Date = DateTime.Now, ImagePath = "DefaultImage.jpg" });
+            carImage.Add(new CarImage { CarId = carId, Date = DateTime.Now, ImagePath = "DefaultLogo.jpg" });
             return new SuccessDataResult<List<CarImage>>(carImage);
         }
-        private IResult CheckCarImage(int carId)
-        {
-            var result = _carImageDal.GetAll(c => c.CarId == carId).Count;
-            if (result > 0)
-            {
-                return new SuccessResult();
-            }
-            return new ErrorResult();
-        }
+
+       
     }
 }
