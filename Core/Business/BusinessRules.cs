@@ -1,5 +1,5 @@
-﻿using Core.Utilities.Abstract;
-using Core.Utilities.VoidResults;
+﻿using Core.Utilities.Results.Abstract;
+using Core.Utilities.Results.Concrete;
 using System;
 using System.Collections.Generic;
 using System.Linq;

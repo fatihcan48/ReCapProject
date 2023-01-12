@@ -1,11 +1,9 @@
 ﻿using Business.Abstract;
 using Business.Constants;
 using Core.BusinessRules;
-using Core.Utilities.Abstract;
-using Core.Utilities.Concrete;
-using Core.Utilities.DataResults;
 using Core.Utilities.Helpers;
-using Core.Utilities.VoidResults;
+using Core.Utilities.Results.Abstract;
+using Core.Utilities.Results.Concrete;
 using DataAccess.Abstract;
 using Entities.Concrete;
 using Microsoft.AspNetCore.Http;

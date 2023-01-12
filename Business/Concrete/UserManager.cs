@@ -1,9 +1,8 @@
 ﻿using Business.Abstract;
 using Business.Constants;
-using Core.Utilities.Abstract;
-using Core.Utilities.Concrete;
-using Core.Utilities.DataResults;
-using Core.Utilities.VoidResults;
+using Core.Entities.Concrete;
+using Core.Utilities.Results.Abstract;
+using Core.Utilities.Results.Concrete;
 using DataAccess.Abstract;
 using Entities.Concrete;
 using System;
@@ -25,15 +24,10 @@ namespace Business.Concrete
 
         public IResult Add(User user)
         {
-            if (user.Password.Length<6)
-            {
-                return new ErrorResult(Messages.InvalidProductEntry);
-            }
-            else
-            {
-                _userDal.Add(user);
-                return new SuccessResult(Messages.UserAdded);
-            }
+
+            _userDal.Add(user);
+            return new SuccessResult(Messages.UserAdded);
+            
         }
 
         public IResult Delete(User user)
@@ -42,14 +36,14 @@ namespace Business.Concrete
             return new SuccessResult(Messages.UserDeleted);
         }
 
-        public IDataResult<List<User>> GetAll()
+        public IDataResult<List<OperationClaim>> GetClaims(User user)
         {
-            return new SuccessDataResult<List<User>>(_userDal.GetAll());
+            return new SuccessDataResult<List<OperationClaim>>(_userDal.GetClaims(user));
         }
 
-        public IDataResult<User> GetById(int userId)
+        public IDataResult<User> GetByMail(string email)
         {
-            return new SuccessDataResult<User>(_userDal.Get(p => p.UserId == userId));
+            return new SuccessDataResult<User>(_userDal.Get(p => p.Email == email));
         }
 
         public IResult Update(User user)

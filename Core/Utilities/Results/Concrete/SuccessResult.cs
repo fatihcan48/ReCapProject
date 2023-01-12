@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Core.Utilities.Concrete;
+using Core.Utilities.Results.Concrete;
 
-namespace Core.Utilities.VoidResults
+namespace Core.Utilities.Results.Concrete
 {
     public class SuccessResult : Result
     {
